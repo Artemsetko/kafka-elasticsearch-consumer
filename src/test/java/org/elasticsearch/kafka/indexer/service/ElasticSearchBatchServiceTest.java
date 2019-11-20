@@ -1,5 +1,7 @@
 package org.elasticsearch.kafka.indexer.service;
 
+import com.google.common.collect.Iterables;
+import org.apache.http.HttpHost;
 import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -8,6 +10,8 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -25,6 +29,7 @@ import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 
@@ -112,7 +117,7 @@ public class ElasticSearchBatchServiceTest {
 
     }
 
-  /*  @Test
+    @Test
     public void testPostBulkToES() throws InterruptedException, IndexerESRecoverableException, IndexerESNotRecoverableException, ExecutionException, IOException {
 
         String message = "test message";
@@ -120,15 +125,26 @@ public class ElasticSearchBatchServiceTest {
 
         BulkRequest bulkRequest = new BulkRequest().add(new IndexRequest().id(eventUUID).type(testIndexType).source(message, XContentType.JSON).index(testIndexName));
 
-        Mockito.when(elasticSearchClientService.getEsClient()).thenReturn(mockedRestHighLevelClient);
-        Mockito.when(mockedRestHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT)).thenReturn(mockedBulkResponse);
+        Mockito.when(elasticSearchClientService.prepareIndexRequest(message, testIndexName, testIndexType, eventUUID)).thenReturn(new IndexRequest().id(eventUUID).type(testIndexType).source(message, XContentType.JSON).index(testIndexName));
+
+        try {
+            elasticSearchBatchService.addEventToBulkRequest(message, testIndexName, testIndexType, eventUUID,
+                    eventUUID);
+        } catch (Exception e) {
+            fail("Unexpected exception from unit test: " + e.getMessage());
+        }
+
+        RestHighLevelClient restHighLevelClient = Mockito.spy(new RestHighLevelClient(RestClient.builder(Iterables.toArray(Arrays.asList(new HttpHost("localhost")), HttpHost.class))));
+
+        Mockito.when(elasticSearchClientService.getEsClient()).thenReturn(restHighLevelClient);
+       // Mockito.when(restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT)).thenReturn(mockedBulkResponse);
         Mockito.when(mockedBulkResponse.hasFailures()).thenReturn(false);
         Mockito.when(mockedBulkRequest.numberOfActions()).thenReturn(1);
-        elasticSearchBatchService.postBulkToEs(mockedBulkRequest);
+        elasticSearchBatchService.postBulkToEs(bulkRequest);
 
-        Mockito.verify(elasticSearchClientService).getEsClient();
+        Mockito.verify(restHighLevelClient).bulk(bulkRequest, RequestOptions.DEFAULT);
 
-    }*/
+    }
 
     /**
      * Test method for
@@ -225,6 +241,5 @@ public class ElasticSearchBatchServiceTest {
         // verify that getFailure() is called twice
   //    Mockito.verify(bulkItemResponse, Mockito.times(2)).getFailure();
     }
-
 
 }
